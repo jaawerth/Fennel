@@ -58,6 +58,14 @@ local function allowGlobals(globalNames)
     end
 end
 
+local function copyPairs(dest, ...)
+    for i = 1, select('#', ...) do
+        local src = select(i, ...)
+        if type(src) == "table" then for k,v in pairs(src) do dest[k] = v end end
+    end
+    return dest
+end
+
 for i=#arg, 1, -1 do
     if arg[i] == "--no-searcher" then
         options.no_searcher = true
@@ -102,8 +110,7 @@ for i=#arg, 1, -1 do
 end
 
 if not options.no_searcher then
-    local opts = {}
-    for k,v in pairs(options) do opts[k] = v end
+    local opts = copyPairs({}, options)
     table.insert((package.loaders or package.searchers), fennel.make_searcher(opts))
 end
 
@@ -157,8 +164,12 @@ if arg[1] == "--repl" or #arg == 0 then
 
     if init then
         init:close()
-        -- pass in options so fennerlrc can make changes to it
-        dosafe(initFilename, options, options)
+        local initOpts = copyPairs({}, options, { allowedGlobals = {'options'}})
+        for i, v in ipairs(options.allowedGlobals) do
+            table.insert(initOpts.allowedGlobals, v)
+        end
+        initOpts.env = copyPairs({}, options.env, _ENV or _G, { options = options })
+        dosafe(initFilename, initOpts, {options})
     end
     print("Welcome to Fennel " .. fennel.version .. "!")
     if options.useMetadata ~= false then
