@@ -21,6 +21,7 @@ Run fennel, a lisp programming language for the Lua runtime.
   --no-metadata           : Disable function metadata, even in REPL
   --correlate             : Make Lua output line numbers match Fennel input
   --load FILE (-l)        : Load the specified FILE before executing the command
+  --lua LUA_EXE           : Use supplied lua version instead of the default
   --no-fennelrc           : Skip loading ~/.fennelrc when launching repl
   --compile-binary FILE
       OUT LUA_LIB LUA_DIR : Compile FILE to standalone binary OUT (experimental)
@@ -57,8 +58,18 @@ Run fennel, a lisp programming language for the Lua runtime.
     (dosafely fennel.dofile file options)
     (table.remove arg i)))
 
+(fn handle-lua [i]
+  (let [tlua (do (table.remove arg i) (table.remove arg i))
+        args []]
+    (for [i 1 (# arg)] (table.insert args (: "%q" :format (. arg i))))
+    (if (pcall os.execute (string.format "%s %s %s" tlua (. arg 0)
+                                            (table.concat args " ")))
+      (os.exit 0 true)
+      (os.exit 1 true))))
+
 (for [i (# arg) 1 -1]
   (match (. arg i)
+    "--lua" (handle-lua i)
     "--no-searcher" (do (set options.no_searcher true)
                         (table.remove arg i))
     "--indent" (do (set options.indent (table.remove arg (+ i 1)))
